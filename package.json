@@ -1,0 +1,25 @@
+{
+  "name": "personal-enterprise-aws",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "build": "tsc --noEmit",
+    "test": "node --import tsx --test test/**/*.test.ts",
+    "cdk": "cdk",
+    "synth": "cdk synth",
+    "diff:management": "cdk diff Management --profile management",
+    "diff:workload-dev": "cdk diff WorkloadDev --profile workload-dev",
+    "deploy:management": "cdk deploy Management --profile management",
+    "deploy:workload-dev": "cdk deploy WorkloadDev --profile workload-dev"
+  },
+  "dependencies": {
+    "aws-cdk-lib": "^2.214.0",
+    "constructs": "^10.4.2"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.0",
+    "aws-cdk": "^2.1033.0",
+    "tsx": "^4.20.0",
+    "typescript": "~5.8.3"
+  }
+}
