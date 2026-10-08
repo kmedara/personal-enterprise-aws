@@ -9,143 +9,133 @@ All three stacks deploy to the management account. CDK deploys **Organization** 
 **DeveloperRole** read the new account id and the organizational unit id from that stack, so those ids are not copied
 into the environment file after the first deploy.
 
-## What has to exist first
-
 The management account already exists. This application does not create it. Identity Center is already enabled in that
 account, in the region used for the deploy. The Identity Center home region and the CDK region have to be the same.
-`us-east-1` is the usual choice.
+`us-east-1` is the usual choice. The first deploy cannot sign in through the new Identity Center assignments, because
+those assignments are what the deploy creates.
 
-The first deploy cannot sign in through the new Identity Center assignments. Those assignments are what the deploy
-creates. The first bootstrap and deploy use an administrator credential that is already in the management account: the
-root access key, or an existing IAM user with administrator access. After Identity Center sign-in works, that key is
-deleted.
+## Steps
 
-The machine needs **Node.js** 22 or newer, **npm**, and the **AWS Command Line Interface (AWS CLI)** version 2.
+1. Install **Node.js** 22 or newer, **npm**, and the **AWS Command Line Interface (AWS CLI)** version 2.
 
-## Get the code and install dependencies
+2. Clone the repository and install dependencies. `npm ci` installs the CDK application and the CLI from the lockfile.
 
-```bash
-git clone <repository-url>
-cd personal-enterprise-aws
-npm ci
-```
+    ```bash
+    git clone <repository-url>
+    cd personal-enterprise-aws
+    npm ci
+    ```
 
-`npm ci` installs the CDK application and the CLI from the lockfile.
+3. Create `.env` in the repository root. The application reads this file on every `cdk` command. Every variable below
+   is required. `ORGANIZATIONAL_UNITS` is a comma-separated list and must include `workload`, because the development
+   account is created in that unit. Both `.env` and `config/users.json` are gitignored.
 
-## Configuration files
+    ```bash
+    MGMT_ACCOUNT_ID=123456789012
+    MGMT_ACCOUNT_EMAIL=management@example.com
+    WORKLOAD_DEVELOPMENT_ACCOUNT_EMAIL=development@example.com
+    IDENTITY_CENTER_INSTANCE_ARN=arn:aws:sso:::instance/ssoins-0123456789abcdef
+    IDENTITY_STORE_ID=d-0123456789
+    ORGANIZATIONAL_UNITS=workload,security,networking
+    ```
 
-Two local files are required. Both are gitignored.
+    | Variable                             | What it is                                                                           |
+    | ------------------------------------ | ------------------------------------------------------------------------------------ |
+    | `MGMT_ACCOUNT_ID`                    | Twelve-digit id of the management account                                           |
+    | `MGMT_ACCOUNT_EMAIL`                 | Email address of the management account                                              |
+    | `WORKLOAD_DEVELOPMENT_ACCOUNT_EMAIL` | New email address for the development account. It cannot already be an AWS account |
+    | `IDENTITY_CENTER_INSTANCE_ARN`       | Amazon Resource Name (ARN) of the Identity Center instance                           |
+    | `IDENTITY_STORE_ID`                  | Identity Store id for that instance                                                  |
+    | `ORGANIZATIONAL_UNITS`               | Organizational unit names created under the organization root                        |
 
-### `.env`
+    The instance ARN and the Identity Store id are on the Identity Center settings page in the console.
 
-The application reads this file on every `cdk` command. Every variable below is required. `ORGANIZATIONAL_UNITS` is a
-comma-separated list and must include `workload`, because the development account is created in that unit.
+4. Create `config/users.json`. A person listed under `administrators` joins the administrators group. A person listed
+   under `developers` joins the developers group. The same person can be in both lists. `userName` is the sign-in name.
 
-```bash
-MGMT_ACCOUNT_ID=123456789012
-MGMT_ACCOUNT_EMAIL=management@example.com
-WORKLOAD_DEVELOPMENT_ACCOUNT_EMAIL=development@example.com
-IDENTITY_CENTER_INSTANCE_ARN=arn:aws:sso:::instance/ssoins-0123456789abcdef
-IDENTITY_STORE_ID=d-0123456789
-ORGANIZATIONAL_UNITS=workload,security,networking
-```
-
-| Variable                             | What it is                                                                      |
-| ------------------------------------ | ------------------------------------------------------------------------------- |
-| `MGMT_ACCOUNT_ID`                    | Twelve-digit id of the management account                                      |
-| `MGMT_ACCOUNT_EMAIL`                 | Email address of the management account                                         |
-| `WORKLOAD_DEVELOPMENT_ACCOUNT_EMAIL` | New email address for the development account. It cannot already be an AWS account |
-| `IDENTITY_CENTER_INSTANCE_ARN`       | Amazon Resource Name (ARN) of the Identity Center instance                      |
-| `IDENTITY_STORE_ID`                  | Identity Store id for that instance                                             |
-| `ORGANIZATIONAL_UNITS`               | Organizational unit names created under the organization root                   |
-
-The instance ARN and the Identity Store id are on the Identity Center settings page in the console.
-
-### `config/users.json`
-
-Identity Center users come from this file. A person listed under `administrators` joins the administrators group. A
-person listed under `developers` joins the developers group. The same person can be in both lists. `userName` is the
-sign-in name.
-
-```json
-{
-  "administrators": [
+    ```json
     {
-      "userName": "ada",
-      "givenName": "Ada",
-      "familyName": "Lovelace",
-      "email": "ada@example.com"
+      "administrators": [
+        {
+          "userName": "ada",
+          "givenName": "Ada",
+          "familyName": "Lovelace",
+          "email": "ada@example.com"
+        }
+      ],
+      "developers": [
+        {
+          "userName": "ada",
+          "givenName": "Ada",
+          "familyName": "Lovelace",
+          "email": "ada@example.com"
+        }
+      ]
     }
-  ],
-  "developers": [
-    {
-      "userName": "ada",
-      "givenName": "Ada",
-      "familyName": "Lovelace",
-      "email": "ada@example.com"
-    }
-  ]
-}
-```
+    ```
 
-## Credentials for the first deploy
+5. Create a temporary administrator credential for the first deploy. In the management account console, open the
+   account menu, then **Security credentials**, then **Access keys**. Put the root access key, or an existing IAM user
+   key with administrator access, in `~/.aws/credentials`. Set the region to the Identity Center home region.
 
-Create a root access key in the management account console: account menu, **Security credentials**, **Access keys**.
-Put the key in `~/.aws/credentials` under a profile used only for this deploy. Set the region to the Identity Center
-home region.
+    ```ini
+    [mgmt-bootstrap]
+    aws_access_key_id=AKIA...
+    aws_secret_access_key=...
+    region=us-east-1
+    ```
 
-```ini
-[mgmt-bootstrap]
-aws_access_key_id=AKIA...
-aws_secret_access_key=...
-region=us-east-1
-```
+6. Confirm the profile lands in the management account. The account id in the response has to match `MGMT_ACCOUNT_ID`.
 
-Confirm the profile lands in the management account:
+    ```bash
+    aws sts get-caller-identity --profile mgmt-bootstrap
+    ```
 
-```bash
-aws sts get-caller-identity --profile mgmt-bootstrap
-```
+7. Bootstrap the CDK toolkit once in the management account and region. Replace the account id and region with the
+   values from `.env` and the profile.
 
-The account id in the response has to match `MGMT_ACCOUNT_ID`.
+    ```bash
+    npx cdk bootstrap aws://123456789012/us-east-1 --profile mgmt-bootstrap
+    ```
 
-## Bootstrap and deploy
+8. Deploy the **Organization** stack. This creates the organization, the organizational units, and the development
+   account. Leave the command running until the stack finishes. Creating the account takes several minutes.
 
-Bootstrap once per management account and region. Then deploy every stack:
+    ```bash
+    npx cdk deploy Organization --profile mgmt-bootstrap
+    ```
 
-```bash
-npx cdk bootstrap aws://123456789012/us-east-1 --profile mgmt-bootstrap
-npx cdk deploy --all --profile mgmt-bootstrap
-```
+9. Enable CloudFormation StackSets trusted access in the management account console. The application does not do this.
+   Sign in to the management account, open **AWS Organizations**, choose **Services**, select **CloudFormation
+   StackSets**, and choose **Enable trusted access**. The organization from step 8 has to exist before this control is
+   available. Trusted access lets the **DeveloperRole** stack set create the `developer` role in the development
+   account.
 
-Replace the account id and region with the values from `.env` and the profile. CDK asks for approval before creating
-IAM resources and the stack set. Accept that approval.
+10. Deploy **IdentityCenter** and **DeveloperRole**. CDK asks for approval before creating IAM resources and the stack
+    set. Accept that approval. **IdentityCenter** creates the users, groups, permission sets, memberships, and account
+    assignments. **DeveloperRole** stays in the management account and uses the stack set to create the `developer`
+    role in the development account.
 
-**Organization** creates the organization, the organizational units, and the development account, and turns on
-CloudFormation StackSets access. **IdentityCenter** creates the users, groups, permission sets, memberships, and
-account assignments. **DeveloperRole** stays in the management account and uses a stack set to create the `developer`
-role in the development account.
+    ```bash
+    npx cdk deploy IdentityCenter DeveloperRole --profile mgmt-bootstrap
+    ```
 
-Leave the command running until all three stacks finish. Creating the account and the stack set instance takes several
-minutes.
+11. Sign in with Identity Center and remove the temporary key. The AWS CLI profile for day-to-day work points at the
+    Identity Center start URL, the management account, and the `AdministratorAccess` permission set. `sso_region` is
+    the Identity Center home region.
 
-## Sign in with Identity Center
+    ```bash
+    aws sso login --profile admin:mgmt
+    aws sts get-caller-identity --profile admin:mgmt
+    ```
 
-After the deploy, the AWS CLI profile for day-to-day work points at the Identity Center start URL, the management
-account, and the `AdministratorAccess` permission set. The `sso_region` is the Identity Center home region.
+    When that identity call returns the management account, delete the root access key in the console and remove the
+    `[mgmt-bootstrap]` profile. Keep the root console password and multi-factor authentication (MFA). Later deploys
+    use the Identity Center profile:
 
-```bash
-aws sso login --profile admin:mgmt
-aws sts get-caller-identity --profile admin:mgmt
-```
-
-When that identity call returns the management account, delete the root access key in the console and remove the
-`[mgmt-bootstrap]` profile. Keep the root console password and multi-factor authentication (MFA). Later deploys use
-the Identity Center profile:
-
-```bash
-npx cdk deploy --all --profile admin:mgmt
-```
+    ```bash
+    npx cdk deploy --all --profile admin:mgmt
+    ```
 
 ## Commands
 
