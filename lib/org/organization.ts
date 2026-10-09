@@ -27,6 +27,10 @@ export type OrganizationStackProps = cdk.StackProps & {
 export class OrganizationStack extends cdk.Stack {
   /** Account id of the development workload account. */
   readonly developmentAccountId: string;
+  /** Id of the organization. */
+  readonly organizationId: string;
+  /** Id of the organization root. */
+  readonly rootId: string;
   /** Id of the workload organizational unit. */
   readonly workloadOuId: string;
 
@@ -63,6 +67,8 @@ export class OrganizationStack extends cdk.Stack {
       parentId: workloadOu.attrId,
     });
     this.developmentAccountId = development.account.attrAccountId;
+    this.organizationId = org.attrId;
+    this.rootId = org.attrRootId;
     this.workloadOuId = workloadOu.attrId;
 
     new cdk.CfnOutput(this, "DevelopmentWorkloadAccountId", {

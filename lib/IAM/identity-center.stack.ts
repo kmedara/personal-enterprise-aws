@@ -2,11 +2,10 @@ import { CfnGroup, CfnGroupMembership } from "aws-cdk-lib/aws-identitystore";
 import { CfnAssignment, CfnPermissionSet } from "aws-cdk-lib/aws-sso";
 import * as cdk from "aws-cdk-lib/core";
 import { Construct } from "constructs";
-import { ACCOUNT_NAME, GROUP_NAMES } from "../constants";
+import { ACCOUNT_NAME, GROUP_NAME, GROUP_NAMES } from "../constants";
 import { Groups } from "./groups";
-import { loadUsers } from "./load-users";
 import { PermissionSets } from "./permission-sets";
-import { Users } from "./users";
+import { IdentityCenterUser, Users } from "./users";
 
 /** Properties for {@link IdentityCenterStack}. */
 export type IdentityCenterStackProps = cdk.StackProps & {
@@ -16,6 +15,8 @@ export type IdentityCenterStackProps = cdk.StackProps & {
   IDENTITY_STORE_ID: string;
   /** Account ids keyed by account name. */
   accountIds: Record<ACCOUNT_NAME, string>;
+  /** Users to create, grouped by Identity Center group name. */
+  users: Record<GROUP_NAME, IdentityCenterUser[]>;
 };
 
 /**
@@ -35,7 +36,7 @@ export class IdentityCenterStack extends cdk.Stack {
 
     const users = new Users(this, "Users", {
       IDENTITY_STORE_ID: props.IDENTITY_STORE_ID,
-      users: loadUsers(),
+      users: props.users,
     });
     const groups = new Groups(this, "Groups", {
       IDENTITY_STORE_ID: props.IDENTITY_STORE_ID,
@@ -96,13 +97,17 @@ export class IdentityCenterStack extends cdk.Stack {
     identityStoreId: string,
   ): void {
     users.users.get(groupName)?.forEach((user) => {
-      new CfnGroupMembership(this, `${user.node.id}${group.node.id}Membership`, {
-        identityStoreId,
-        groupId: group.attrGroupId,
-        memberId: {
-          userId: user.attrUserId,
+      new CfnGroupMembership(
+        this,
+        `${user.node.id}${group.node.id}Membership`,
+        {
+          identityStoreId,
+          groupId: group.attrGroupId,
+          memberId: {
+            userId: user.attrUserId,
+          },
         },
-      });
+      );
     });
   }
 

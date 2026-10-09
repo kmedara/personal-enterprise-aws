@@ -18,8 +18,8 @@
     "typescript": "~7.0.2"
   },
   "dependencies": {
+    "@aws-sdk/client-ssm": "^3.1148.0",
     "aws-cdk-lib": "^2.271.0",
-    "constructs": "^10.5.0",
-    "dotenv": "^18.0.6"
+    "constructs": "^10.5.0"
   }
 }

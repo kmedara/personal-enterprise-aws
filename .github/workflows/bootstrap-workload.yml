@@ -1,0 +1,59 @@
+name: Bootstrap workload account
+
+on:
+  workflow_dispatch:
+    inputs:
+      account_id:
+        description: Twelve-digit id of the workload account to bootstrap
+        required: true
+        type: string
+      region:
+        description: Region to bootstrap
+        required: true
+        type: string
+        default: us-east-1
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  bootstrap:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Mask account and region
+        run: |
+          echo "::add-mask::${{ inputs.account_id }}"
+          echo "::add-mask::${{ inputs.region }}"
+      - uses: actions/checkout@v4
+      - name: Assume github-bootstrap in the management account
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.GH_WORKLOAD_BOOTSTRAP_ROLE_ARN }}
+          aws-region: ${{ inputs.region }}
+
+      - name: Install the CDK CLI
+        run: npm install -g aws-cdk@2.1144.0
+
+      - name: Bootstrap the workload account
+        working-directory: ${{ runner.temp }}
+        env:
+          ACCOUNT_ID: ${{ inputs.account_id }}
+          BOOTSTRAP_REGION: ${{ inputs.region }}
+        run: |
+          set -o pipefail
+          if ! [[ "$ACCOUNT_ID" =~ ^[0-9]{12}$ ]]; then
+            echo "account_id must be a twelve-digit account id."
+            exit 1
+          fi
+          {
+            read -r AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_SESSION_TOKEN < <(
+              aws sts assume-role \
+                --role-arn "arn:aws:iam::${ACCOUNT_ID}:role/OrganizationAccountAccessRole" \
+                --role-session-name github-bootstrap \
+                --query "Credentials.[AccessKeyId,SecretAccessKey,SessionToken]" \
+                --output text
+            )
+            export AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_SESSION_TOKEN
+            cdk bootstrap "aws://${ACCOUNT_ID}/${BOOTSTRAP_REGION}"
+          } 2>&1 | awk -f "$GITHUB_WORKSPACE/.github/scripts/redact-aws-log.awk"
