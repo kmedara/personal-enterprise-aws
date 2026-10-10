@@ -43,7 +43,7 @@ export class IdentityCenterStack extends cdk.Stack {
     });
     const permissionSets = new PermissionSets(this, "PermissionSets", {
       INSTANCE_ARN: props.IDENTITY_CENTER_INSTANCE_ARN,
-      WORKLOAD_DEVELOPMENT_ACCOUNT_ID: props.accountIds["workload:development"],
+      WORKLOAD_DEVELOPMENT_ACCOUNT_ID: props.accountIds["workload:staging"],
     });
 
     this.addMemberships(
@@ -71,14 +71,14 @@ export class IdentityCenterStack extends cdk.Stack {
       props.IDENTITY_CENTER_INSTANCE_ARN,
       permissionSets.administratorAccess,
       groups.administrators,
-      props.accountIds["workload:development"],
+      props.accountIds["workload:staging"],
     );
     this.assign(
       "DevelopersWorkloadAssignment",
       props.IDENTITY_CENTER_INSTANCE_ARN,
       permissionSets.developerAccess,
       groups.developers,
-      props.accountIds["workload:development"],
+      props.accountIds["workload:staging"],
     );
   }
 

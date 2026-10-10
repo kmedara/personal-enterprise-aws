@@ -75,7 +75,7 @@ async function main(): Promise<void> {
     IDENTITY_STORE_ID: env.IDENTITY_STORE_ID,
     accountIds: {
       management: managementAccountId,
-      "workload:development": organization.developmentAccountId,
+      "workload:staging": organization.developmentAccountId,
     },
     users: parseUsers(env.IDENTITY_CENTER_USERS),
   });

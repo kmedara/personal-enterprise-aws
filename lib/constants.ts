@@ -1,14 +1,14 @@
 /**
  * Account name used to look up an account id.
  *
- * `workload:development` is the development workload account.
+ * `workload:staging` is the staging workload account.
  * `management` is the organization management account.
  */
-export type ACCOUNT_NAME = "workload:development" | "management";
+export type ACCOUNT_NAME = "workload:staging" | "management";
 
 /** Account names keyed by themselves so call sites can use a named constant. */
 export const ACCOUNT_NAMES: Record<ACCOUNT_NAME, ACCOUNT_NAME> = {
-  "workload:development": "workload:development",
+  "workload:staging": "workload:staging",
   management: "management",
 };
 
